@@ -1,0 +1,123 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body {
+  height: 100%;
+  background: #0a0d12;
+}
+
+body {
+  font-family: var(--font-body);
+  color: #edeff3;
+}
+
+::selection {
+  background: rgba(242, 166, 75, 0.25);
+}
+
+/* thin scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #232833 transparent;
+}
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+*::-webkit-scrollbar-thumb {
+  background: #232833;
+  border-radius: 999px;
+}
+
+/* markdown content inside chat bubbles */
+.prose-pohana p {
+  margin: 0 0 0.75em 0;
+  line-height: 1.65;
+}
+.prose-pohana p:last-child {
+  margin-bottom: 0;
+}
+.prose-pohana ul,
+.prose-pohana ol {
+  margin: 0 0 0.75em 1.25em;
+  line-height: 1.6;
+}
+.prose-pohana li {
+  margin-bottom: 0.25em;
+}
+.prose-pohana h1,
+.prose-pohana h2,
+.prose-pohana h3 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  margin: 1em 0 0.5em 0;
+  color: #f7c978;
+}
+.prose-pohana a {
+  color: #f2a64b;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.prose-pohana strong {
+  color: #ffffff;
+  font-weight: 600;
+}
+.prose-pohana blockquote {
+  border-left: 2px solid #8a5a22;
+  padding-left: 0.75em;
+  color: #8890a0;
+  margin: 0.5em 0;
+}
+.prose-pohana code {
+  font-family: var(--font-mono);
+  background: #181c25;
+  border: 1px solid #232833;
+  padding: 0.1em 0.4em;
+  border-radius: 4px;
+  font-size: 0.85em;
+}
+.prose-pohana pre {
+  background: #0e1116;
+  border: 1px solid #232833;
+  border-radius: 10px;
+  padding: 0.9em 1em;
+  overflow-x: auto;
+  margin: 0.75em 0;
+}
+.prose-pohana pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.85em;
+  line-height: 1.55;
+}
+.prose-pohana table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.75em 0;
+  font-size: 0.9em;
+}
+.prose-pohana th,
+.prose-pohana td {
+  border: 1px solid #232833;
+  padding: 0.4em 0.6em;
+  text-align: left;
+}
+.prose-pohana th {
+  background: #181c25;
+  color: #f7c978;
+}
+
+/* typing cursor */
+.cursor-blink::after {
+  content: "▍";
+  color: #f2a64b;
+  animation: blink 1s steps(1) infinite;
+}
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
