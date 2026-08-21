@@ -320,9 +320,11 @@ domain you attach in the Vercel dashboard) — all on Vercel's free Hobby plan.
 ## 8. Customizing
 
 - **Change the model:** edit the string inside `groq("...")` in
-  `app/api/chat/route.ts`. Other free Groq models: `llama-3.1-8b-instant`
-  (fastest), `gemma2-9b-it`, `mixtral-8x7b-32768` (check
-  console.groq.com/docs/models for the current list).
+  `app/api/chat/route.ts`. Groq retires older models over time — as of
+  August 2026, `openai/gpt-oss-120b` (what this project uses by default) and
+  `openai/gpt-oss-20b` (smaller/faster) are the current free-tier options.
+  Always check **console.groq.com/docs/models** for the live list, since
+  model names do change.
 - **Change the personality:** edit `SYSTEM_PROMPT` in the same file.
 - **Change the look:** colors/fonts are defined as design tokens in
   `tailwind.config.ts` (`glow`, `ink`, `panel`, etc.) and `app/layout.tsx`
