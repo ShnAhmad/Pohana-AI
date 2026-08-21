@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Plus, LogOut, MessageSquare, X, Trash2, Check, Pencil } from "lucide-react";
+import { Plus, LogOut, MessageSquare, X, Trash2, Pencil } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
@@ -29,7 +29,6 @@ export default function Sidebar({
   onClose: () => void;
 }) {
   const router = useRouter();
-  const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
   const editInputRef = useRef<HTMLInputElement>(null);
@@ -45,13 +44,11 @@ export default function Sidebar({
     router.refresh();
   }
 
-  function handleDeleteClick(e: React.MouseEvent, id: string) {
+  function handleDeleteClick(e: React.MouseEvent, id: string, title: string) {
     e.stopPropagation();
-    if (confirmingId === id) {
+    const confirmed = window.confirm(`Delete "${title || "New chat"}"? This can't be undone.`);
+    if (confirmed) {
       onDelete(id);
-      setConfirmingId(null);
-    } else {
-      setConfirmingId(id);
     }
   }
 
@@ -103,12 +100,11 @@ export default function Sidebar({
             <p className="text-xs text-text-muted px-2 py-4 text-center">No conversations yet.</p>
           )}
           {conversations.map((c) => {
-            const confirming = confirmingId === c.id;
             const editing = editingId === c.id;
             return (
               <div
                 key={c.id}
-                onClick={() => !confirming && !editing && onSelect(c.id)}
+                onClick={() => !editing && onSelect(c.id)}
                 onDoubleClick={(e) => !editing && startEditing(e, c)}
                 className={`group flex items-center gap-1 text-left text-sm px-2 py-2 rounded-lg mb-1 cursor-pointer transition-colors border ${
                   c.id === activeId
@@ -143,16 +139,11 @@ export default function Sidebar({
                       <Pencil size={13} />
                     </button>
                     <button
-                      onClick={(e) => handleDeleteClick(e, c.id)}
-                      onMouseLeave={() => confirming && setConfirmingId((v) => (v === c.id ? null : v))}
-                      aria-label={confirming ? "Confirm delete" : "Delete conversation"}
-                      className={`flex-shrink-0 p-1 rounded transition-colors ${
-                        confirming
-                          ? "text-red-400 hover:text-red-300 opacity-100"
-                          : "opacity-0 group-hover:opacity-100 text-text-muted hover:text-red-400"
-                      }`}
+                      onClick={(e) => handleDeleteClick(e, c.id, c.title)}
+                      aria-label="Delete conversation"
+                      className="flex-shrink-0 p-1 rounded opacity-0 group-hover:opacity-100 text-text-muted hover:text-red-400 transition-colors"
                     >
-                      {confirming ? <Check size={13} /> : <Trash2 size={13} />}
+                      <Trash2 size={13} />
                     </button>
                   </>
                 )}
