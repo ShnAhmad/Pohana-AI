@@ -1,6 +1,6 @@
 "use client";
 
-import { Sparkles, RotateCcw, Menu } from "lucide-react";
+import { Sparkles, RotateCcw, Menu, Plus } from "lucide-react";
 
 export default function Header({
   onReset,
@@ -34,7 +34,7 @@ export default function Header({
           onClick={onReset}
           className="flex items-center gap-1.5 text-xs text-text-muted hover:text-text border border-border hover:border-glow/40 rounded-full px-3 py-1.5 transition-colors"
         >
-          <RotateCcw size={12} />
+          <Plus size={12} />
           New chat
         </button>
       )}

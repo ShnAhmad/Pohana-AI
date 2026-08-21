@@ -85,6 +85,23 @@ export default function ChatApp({
     }
   }
 
+  async function handleRenameConversation(id: string, title: string) {
+    const previousTitle = conversations.find((c) => c.id === id)?.title;
+    setConversations((prev) => prev.map((c) => (c.id === id ? { ...c, title } : c)));
+
+    const res = await fetch(`/api/conversations/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title }),
+    });
+
+    if (!res.ok && previousTitle !== undefined) {
+      setConversations((prev) =>
+        prev.map((c) => (c.id === id ? { ...c, title: previousTitle } : c))
+      );
+    }
+  }
+
   async function handleSend(text?: string) {
     const content = (text ?? input).trim();
     if (!content || isLoading) return;
@@ -122,6 +139,7 @@ export default function ChatApp({
         onSelect={loadConversation}
         onNewChat={startNewChat}
         onDelete={handleDeleteConversation}
+        onRename={handleRenameConversation}
         userEmail={userEmail}
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}

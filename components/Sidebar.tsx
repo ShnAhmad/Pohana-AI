@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, LogOut, MessageSquare, X, Trash2, Check } from "lucide-react";
+import { Plus, LogOut, MessageSquare, X, Trash2, Check, Pencil } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
@@ -13,6 +13,7 @@ export default function Sidebar({
   onSelect,
   onNewChat,
   onDelete,
+  onRename,
   userEmail,
   open,
   onClose,
@@ -22,12 +23,15 @@ export default function Sidebar({
   onSelect: (id: string) => void;
   onNewChat: () => void;
   onDelete: (id: string) => void;
+  onRename: (id: string, title: string) => void;
   userEmail: string;
   open: boolean;
   onClose: () => void;
 }) {
   const router = useRouter();
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameTitle, setRenameTitle] = useState("");
 
   async function handleSignOut() {
     const supabase = createClient();
@@ -44,6 +48,19 @@ export default function Sidebar({
     } else {
       setConfirmingId(id);
     }
+  }
+
+  function startRename(e: React.MouseEvent, conversation: Conversation) {
+    e.stopPropagation();
+    setConfirmingId(null);
+    setRenamingId(conversation.id);
+    setRenameTitle(conversation.title || "New chat");
+  }
+
+  function finishRename(id: string) {
+    const title = renameTitle.trim();
+    if (title) onRename(id, title.slice(0, 60));
+    setRenamingId(null);
   }
 
   return (
@@ -85,7 +102,32 @@ export default function Sidebar({
                 }`}
               >
                 <MessageSquare size={14} className="flex-shrink-0" />
-                <span className="truncate flex-1">{c.title || "New chat"}</span>
+                {renamingId === c.id ? (
+                  <input
+                    autoFocus
+                    value={renameTitle}
+                    onChange={(e) => setRenameTitle(e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
+                    onBlur={() => finishRename(c.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") finishRename(c.id);
+                      if (e.key === "Escape") setRenamingId(null);
+                    }}
+                    aria-label="Chat name"
+                    className="min-w-0 flex-1 bg-transparent border-b border-glow/60 outline-none text-text"
+                  />
+                ) : (
+                  <span className="truncate flex-1">{c.title || "New chat"}</span>
+                )}
+                {renamingId !== c.id && (
+                  <button
+                    onClick={(e) => startRename(e, c)}
+                    aria-label="Rename conversation"
+                    className="flex-shrink-0 p-1 rounded opacity-0 group-hover:opacity-100 text-text-muted hover:text-glow transition-colors"
+                  >
+                    <Pencil size={13} />
+                  </button>
+                )}
                 <button
                   onClick={(e) => handleDeleteClick(e, c.id)}
                   onMouseLeave={() => confirming && setConfirmingId((v) => (v === c.id ? null : v))}
