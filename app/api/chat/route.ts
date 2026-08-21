@@ -61,7 +61,12 @@ export async function POST(req: Request) {
       },
     });
 
-    return result.toDataStreamResponse();
+    return result.toDataStreamResponse({
+      getErrorMessage: (error) => {
+        console.error("streamText error:", error);
+        return error instanceof Error ? error.message : "Unknown streaming error";
+      },
+    });
   } catch (err) {
     console.error("Chat API error:", err);
     return new Response(
