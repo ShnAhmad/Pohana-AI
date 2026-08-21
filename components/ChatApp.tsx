@@ -66,6 +66,25 @@ export default function ChatApp({
     setSidebarOpen(false);
   }
 
+  async function handleDeleteConversation(id: string) {
+    // optimistic UI update
+    const wasActive = id === conversationId;
+    setConversations((prev) => prev.filter((c) => c.id !== id));
+
+    if (wasActive) {
+      setConversationId(null);
+      setMessages([]);
+    }
+
+    const res = await fetch(`/api/conversations/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      // roll back on failure by refetching the list
+      const listRes = await fetch("/api/conversations");
+      const json = await listRes.json();
+      setConversations(json.conversations ?? []);
+    }
+  }
+
   async function handleSend(text?: string) {
     const content = (text ?? input).trim();
     if (!content || isLoading) return;
@@ -102,6 +121,7 @@ export default function ChatApp({
         activeId={conversationId}
         onSelect={loadConversation}
         onNewChat={startNewChat}
+        onDelete={handleDeleteConversation}
         userEmail={userEmail}
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}

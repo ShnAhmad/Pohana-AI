@@ -1,6 +1,7 @@
 "use client";
 
-import { Plus, LogOut, MessageSquare, X } from "lucide-react";
+import { useState } from "react";
+import { Plus, LogOut, MessageSquare, X, Trash2, Check } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
@@ -11,6 +12,7 @@ export default function Sidebar({
   activeId,
   onSelect,
   onNewChat,
+  onDelete,
   userEmail,
   open,
   onClose,
@@ -19,17 +21,29 @@ export default function Sidebar({
   activeId: string | null;
   onSelect: (id: string) => void;
   onNewChat: () => void;
+  onDelete: (id: string) => void;
   userEmail: string;
   open: boolean;
   onClose: () => void;
 }) {
   const router = useRouter();
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
 
   async function handleSignOut() {
     const supabase = createClient();
     await supabase.auth.signOut();
     router.push("/login");
     router.refresh();
+  }
+
+  function handleDeleteClick(e: React.MouseEvent, id: string) {
+    e.stopPropagation();
+    if (confirmingId === id) {
+      onDelete(id);
+      setConfirmingId(null);
+    } else {
+      setConfirmingId(id);
+    }
   }
 
   return (
@@ -58,20 +72,35 @@ export default function Sidebar({
           {conversations.length === 0 && (
             <p className="text-xs text-text-muted px-2 py-4 text-center">No conversations yet.</p>
           )}
-          {conversations.map((c) => (
-            <button
-              key={c.id}
-              onClick={() => onSelect(c.id)}
-              className={`w-full flex items-center gap-2 text-left text-sm px-3 py-2 rounded-lg mb-1 truncate transition-colors border ${
-                c.id === activeId
-                  ? "bg-glow/10 text-glow border-glow/30"
-                  : "text-text-muted hover:bg-panel2 hover:text-text border-transparent"
-              }`}
-            >
-              <MessageSquare size={14} className="flex-shrink-0" />
-              <span className="truncate">{c.title || "New chat"}</span>
-            </button>
-          ))}
+          {conversations.map((c) => {
+            const confirming = confirmingId === c.id;
+            return (
+              <div
+                key={c.id}
+                onClick={() => !confirming && onSelect(c.id)}
+                className={`group flex items-center gap-1 text-left text-sm px-2 py-2 rounded-lg mb-1 cursor-pointer transition-colors border ${
+                  c.id === activeId
+                    ? "bg-glow/10 text-glow border-glow/30"
+                    : "text-text-muted hover:bg-panel2 hover:text-text border-transparent"
+                }`}
+              >
+                <MessageSquare size={14} className="flex-shrink-0" />
+                <span className="truncate flex-1">{c.title || "New chat"}</span>
+                <button
+                  onClick={(e) => handleDeleteClick(e, c.id)}
+                  onMouseLeave={() => confirming && setConfirmingId((v) => (v === c.id ? null : v))}
+                  aria-label={confirming ? "Confirm delete" : "Delete conversation"}
+                  className={`flex-shrink-0 p-1 rounded transition-colors ${
+                    confirming
+                      ? "text-red-400 hover:text-red-300 opacity-100"
+                      : "opacity-0 group-hover:opacity-100 text-text-muted hover:text-red-400"
+                  }`}
+                >
+                  {confirming ? <Check size={13} /> : <Trash2 size={13} />}
+                </button>
+              </div>
+            );
+          })}
         </div>
 
         <div className="p-3 border-t border-border flex items-center justify-between gap-2">
