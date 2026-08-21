@@ -94,10 +94,12 @@ export default function ChatApp({
 
     const res = await fetch(`/api/conversations/${id}`, { method: "DELETE" });
     if (!res.ok) {
+      const json = await res.json().catch(() => ({}));
+      console.error("Delete conversation failed:", json.error ?? res.statusText);
       // roll back on failure by refetching the list
       const listRes = await fetch("/api/conversations");
-      const json = await listRes.json();
-      setConversations(json.conversations ?? []);
+      const listJson = await listRes.json();
+      setConversations(listJson.conversations ?? []);
     }
   }
 

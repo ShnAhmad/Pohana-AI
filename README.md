@@ -79,10 +79,14 @@ create table conversations (
   created_at timestamptz default now()
 );
 
--- Messages belong to a conversation
+-- Messages belong to a conversation AND carry their own user_id directly
+-- (not just via a join to conversations) — this keeps the delete policy
+-- below independent of whether the parent conversation still exists,
+-- which matters for cascading deletes.
 create table messages (
   id uuid primary key default gen_random_uuid(),
   conversation_id uuid references conversations(id) on delete cascade not null,
+  user_id uuid references auth.users(id) on delete cascade not null,
   role text not null check (role in ('user','assistant')),
   content text not null,
   created_at timestamptz default now()
@@ -98,19 +102,16 @@ create policy "Users manage own conversations"
 
 create policy "Users manage own messages"
   on messages for all
-  using (
-    exists (
-      select 1 from conversations c
-      where c.id = messages.conversation_id
-        and c.user_id = auth.uid()
-    )
-  );
+  using (auth.uid() = user_id);
 ```
 
 This gives you two tables (`conversations`, `messages`) plus **Row Level
 Security** policies that make Postgres itself enforce "you can only read or
 write your own chats" — even if someone tampered with API requests, the
-database would reject cross-user access.
+database would reject cross-user access. Giving `messages` its own
+`user_id` (rather than checking ownership only via a join to
+`conversations`) avoids a common RLS pitfall where cascading deletes fail
+because the parent row is already gone by the time the policy is checked.
 
 ### 3.3 Get your API keys
 

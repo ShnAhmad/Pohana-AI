@@ -39,11 +39,23 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  // RLS ensures this only ever deletes a conversation the user owns.
-  // "messages" rows are removed automatically via ON DELETE CASCADE.
+  // Delete messages explicitly first (now allowed independently of the
+  // parent conversation still existing, since messages carries its own
+  // user_id). RLS still ensures only this user's rows are ever touched.
+  const { error: messagesError } = await supabase
+    .from("messages")
+    .delete()
+    .eq("conversation_id", params.id);
+
+  if (messagesError) {
+    console.error("Failed to delete messages:", messagesError);
+    return NextResponse.json({ error: messagesError.message }, { status: 500 });
+  }
+
   const { error } = await supabase.from("conversations").delete().eq("id", params.id);
 
   if (error) {
+    console.error("Failed to delete conversation:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
   return NextResponse.json({ success: true });

@@ -84,6 +84,7 @@ export async function POST(req: Request) {
     if (conversationId && lastMessage?.role === "user") {
       await supabase.from("messages").insert({
         conversation_id: conversationId,
+        user_id: user.id,
         role: "user",
         content: lastMessage.content,
       });
@@ -106,6 +107,7 @@ export async function POST(req: Request) {
         if (conversationId) {
           await supabase.from("messages").insert({
             conversation_id: conversationId,
+            user_id: user.id,
             role: "assistant",
             content: text,
           });
@@ -116,9 +118,7 @@ export async function POST(req: Request) {
     return result.toDataStreamResponse({
       getErrorMessage: (error) => {
         console.error("streamText error:", error);
-        return error instanceof Error
-          ? error.message
-          : "Unknown streaming error";
+        return error instanceof Error ? error.message : "Unknown streaming error";
       },
     });
   } catch (err) {
@@ -128,7 +128,7 @@ export async function POST(req: Request) {
         error:
           "Something went wrong talking to the model. Check that GROQ_API_KEY is set correctly.",
       }),
-      { status: 500, headers: { "Content-Type": "application/json" } },
+      { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
 }
