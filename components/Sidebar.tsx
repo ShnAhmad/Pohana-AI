@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Plus, LogOut, MessageSquare, X, Trash2, Check, Pencil } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -30,8 +30,13 @@ export default function Sidebar({
 }) {
   const router = useRouter();
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
-  const [renamingId, setRenamingId] = useState<string | null>(null);
-  const [renameTitle, setRenameTitle] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
+  const editInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editingId) editInputRef.current?.focus();
+  }, [editingId]);
 
   async function handleSignOut() {
     const supabase = createClient();
@@ -50,17 +55,25 @@ export default function Sidebar({
     }
   }
 
-  function startRename(e: React.MouseEvent, conversation: Conversation) {
+  function startEditing(e: React.MouseEvent | React.TouchEvent, c: Conversation) {
     e.stopPropagation();
-    setConfirmingId(null);
-    setRenamingId(conversation.id);
-    setRenameTitle(conversation.title || "New chat");
+    setEditingId(c.id);
+    setEditValue(c.title || "New chat");
   }
 
-  function finishRename(id: string) {
-    const title = renameTitle.trim();
-    if (title) onRename(id, title.slice(0, 60));
-    setRenamingId(null);
+  function commitEdit(id: string) {
+    const trimmed = editValue.trim();
+    if (trimmed) onRename(id, trimmed);
+    setEditingId(null);
+  }
+
+  function handleEditKeyDown(e: React.KeyboardEvent<HTMLInputElement>, id: string) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      commitEdit(id);
+    } else if (e.key === "Escape") {
+      setEditingId(null);
+    }
   }
 
   return (
@@ -91,10 +104,12 @@ export default function Sidebar({
           )}
           {conversations.map((c) => {
             const confirming = confirmingId === c.id;
+            const editing = editingId === c.id;
             return (
               <div
                 key={c.id}
-                onClick={() => !confirming && onSelect(c.id)}
+                onClick={() => !confirming && !editing && onSelect(c.id)}
+                onDoubleClick={(e) => !editing && startEditing(e, c)}
                 className={`group flex items-center gap-1 text-left text-sm px-2 py-2 rounded-lg mb-1 cursor-pointer transition-colors border ${
                   c.id === activeId
                     ? "bg-glow/10 text-glow border-glow/30"
@@ -102,44 +117,45 @@ export default function Sidebar({
                 }`}
               >
                 <MessageSquare size={14} className="flex-shrink-0" />
-                {renamingId === c.id ? (
+
+                {editing ? (
                   <input
-                    autoFocus
-                    value={renameTitle}
-                    onChange={(e) => setRenameTitle(e.target.value)}
+                    ref={editInputRef}
+                    value={editValue}
+                    onChange={(e) => setEditValue(e.target.value)}
+                    onKeyDown={(e) => handleEditKeyDown(e, c.id)}
+                    onBlur={() => commitEdit(c.id)}
                     onClick={(e) => e.stopPropagation()}
-                    onBlur={() => finishRename(c.id)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") finishRename(c.id);
-                      if (e.key === "Escape") setRenamingId(null);
-                    }}
-                    aria-label="Chat name"
-                    className="min-w-0 flex-1 bg-transparent border-b border-glow/60 outline-none text-text"
+                    maxLength={60}
+                    className="flex-1 min-w-0 bg-panel2 border border-glow/40 rounded px-1.5 py-0.5 text-sm text-text outline-none"
                   />
                 ) : (
                   <span className="truncate flex-1">{c.title || "New chat"}</span>
                 )}
-                {renamingId !== c.id && (
-                  <button
-                    onClick={(e) => startRename(e, c)}
-                    aria-label="Rename conversation"
-                    className="flex-shrink-0 p-1 rounded opacity-0 group-hover:opacity-100 text-text-muted hover:text-glow transition-colors"
-                  >
-                    <Pencil size={13} />
-                  </button>
+
+                {!editing && (
+                  <>
+                    <button
+                      onClick={(e) => startEditing(e, c)}
+                      aria-label="Rename conversation"
+                      className="flex-shrink-0 p-1 rounded opacity-0 group-hover:opacity-100 text-text-muted hover:text-text transition-colors"
+                    >
+                      <Pencil size={13} />
+                    </button>
+                    <button
+                      onClick={(e) => handleDeleteClick(e, c.id)}
+                      onMouseLeave={() => confirming && setConfirmingId((v) => (v === c.id ? null : v))}
+                      aria-label={confirming ? "Confirm delete" : "Delete conversation"}
+                      className={`flex-shrink-0 p-1 rounded transition-colors ${
+                        confirming
+                          ? "text-red-400 hover:text-red-300 opacity-100"
+                          : "opacity-0 group-hover:opacity-100 text-text-muted hover:text-red-400"
+                      }`}
+                    >
+                      {confirming ? <Check size={13} /> : <Trash2 size={13} />}
+                    </button>
+                  </>
                 )}
-                <button
-                  onClick={(e) => handleDeleteClick(e, c.id)}
-                  onMouseLeave={() => confirming && setConfirmingId((v) => (v === c.id ? null : v))}
-                  aria-label={confirming ? "Confirm delete" : "Delete conversation"}
-                  className={`flex-shrink-0 p-1 rounded transition-colors ${
-                    confirming
-                      ? "text-red-400 hover:text-red-300 opacity-100"
-                      : "opacity-0 group-hover:opacity-100 text-text-muted hover:text-red-400"
-                  }`}
-                >
-                  {confirming ? <Check size={13} /> : <Trash2 size={13} />}
-                </button>
               </div>
             );
           })}

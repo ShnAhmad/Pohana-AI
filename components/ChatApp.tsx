@@ -66,6 +66,22 @@ export default function ChatApp({
     setSidebarOpen(false);
   }
 
+  async function handleRenameConversation(id: string, title: string) {
+    const previous = conversations;
+    // optimistic UI update
+    setConversations((prev) => prev.map((c) => (c.id === id ? { ...c, title } : c)));
+
+    const res = await fetch(`/api/conversations/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title }),
+    });
+
+    if (!res.ok) {
+      setConversations(previous); // roll back on failure
+    }
+  }
+
   async function handleDeleteConversation(id: string) {
     // optimistic UI update
     const wasActive = id === conversationId;
@@ -82,23 +98,6 @@ export default function ChatApp({
       const listRes = await fetch("/api/conversations");
       const json = await listRes.json();
       setConversations(json.conversations ?? []);
-    }
-  }
-
-  async function handleRenameConversation(id: string, title: string) {
-    const previousTitle = conversations.find((c) => c.id === id)?.title;
-    setConversations((prev) => prev.map((c) => (c.id === id ? { ...c, title } : c)));
-
-    const res = await fetch(`/api/conversations/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title }),
-    });
-
-    if (!res.ok && previousTitle !== undefined) {
-      setConversations((prev) =>
-        prev.map((c) => (c.id === id ? { ...c, title: previousTitle } : c))
-      );
     }
   }
 
