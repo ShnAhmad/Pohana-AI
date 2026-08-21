@@ -30,11 +30,11 @@ export default function ChatMessage({
       </div>
 
       <div
-        className={`max-w-[80%] sm:max-w-[70%] rounded-2xl px-4 py-3 text-[15px] ${
+        className={
           isUser
-            ? "bg-panel2 border border-border rounded-tr-sm"
-            : "bg-panel border border-border rounded-tl-sm"
-        }`}
+            ? "max-w-[80%] sm:max-w-[70%] rounded-2xl rounded-tr-sm px-4 py-3 text-[15px] bg-panel2 border border-border"
+            : "max-w-[85%] sm:max-w-[75%] px-1 py-1 text-[15px]"
+        }
       >
         <div className="prose-pohana">
           <ReactMarkdown remarkPlugins={[remarkGfm]}>{content || (streaming ? "" : "")}</ReactMarkdown>

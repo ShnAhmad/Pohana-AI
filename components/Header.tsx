@@ -12,7 +12,7 @@ export default function Header({
   onToggleSidebar?: () => void;
 }) {
   return (
-    <header className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-border">
+    <header className="sticky top-0 z-20 flex items-center justify-between px-4 sm:px-6 py-4 border-b border-border bg-ink">
       <div className="flex items-center gap-2">
         {onToggleSidebar && (
           <button

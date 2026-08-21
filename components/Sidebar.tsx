@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Plus, LogOut, MessageSquare, X, Trash2, Pencil } from "lucide-react";
+import { Plus, LogOut, MessageSquare, X, Trash2, Pencil, MoreHorizontal } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import ConfirmModal from "@/components/ConfirmModal";
 
 export type Conversation = { id: string; title: string; created_at: string };
 
@@ -31,6 +32,9 @@ export default function Sidebar({
   const router = useRouter();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<Conversation | null>(null);
+  const [signOutOpen, setSignOutOpen] = useState(false);
   const editInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -44,16 +48,9 @@ export default function Sidebar({
     router.refresh();
   }
 
-  function handleDeleteClick(e: React.MouseEvent, id: string, title: string) {
-    e.stopPropagation();
-    const confirmed = window.confirm(`Delete "${title || "New chat"}"? This can't be undone.`);
-    if (confirmed) {
-      onDelete(id);
-    }
-  }
-
   function startEditing(e: React.MouseEvent | React.TouchEvent, c: Conversation) {
     e.stopPropagation();
+    setMenuOpenId(null);
     setEditingId(c.id);
     setEditValue(c.title || "New chat");
   }
@@ -73,9 +70,19 @@ export default function Sidebar({
     }
   }
 
+  function confirmDelete() {
+    if (pendingDelete) onDelete(pendingDelete.id);
+    setPendingDelete(null);
+  }
+
+  const initial = userEmail?.trim()?.[0]?.toUpperCase() || "?";
+
   return (
     <>
       {open && <div className="fixed inset-0 bg-black/50 z-30 sm:hidden" onClick={onClose} />}
+      {menuOpenId && (
+        <div className="fixed inset-0 z-40" onClick={() => setMenuOpenId(null)} />
+      )}
 
       <aside
         className={`fixed sm:static z-40 top-0 left-0 h-full w-64 bg-panel border-r border-border flex flex-col transition-transform duration-200 sm:translate-x-0 ${
@@ -101,12 +108,12 @@ export default function Sidebar({
           )}
           {conversations.map((c) => {
             const editing = editingId === c.id;
+            const menuOpen = menuOpenId === c.id;
             return (
               <div
                 key={c.id}
                 onClick={() => !editing && onSelect(c.id)}
-                onDoubleClick={(e) => !editing && startEditing(e, c)}
-                className={`group flex items-center gap-1 text-left text-sm px-2 py-2 rounded-lg mb-1 cursor-pointer transition-colors border ${
+                className={`group relative flex items-center gap-1 text-left text-sm px-2 py-2 rounded-lg mb-1 cursor-pointer transition-colors border ${
                   c.id === activeId
                     ? "bg-glow/10 text-glow border-glow/30"
                     : "text-text-muted hover:bg-panel2 hover:text-text border-transparent"
@@ -130,32 +137,59 @@ export default function Sidebar({
                 )}
 
                 {!editing && (
-                  <>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setMenuOpenId(menuOpen ? null : c.id);
+                    }}
+                    aria-label="Conversation options"
+                    className={`flex-shrink-0 p-1 rounded transition-colors ${
+                      menuOpen
+                        ? "opacity-100 text-text"
+                        : "opacity-0 group-hover:opacity-100 text-text-muted hover:text-text"
+                    }`}
+                  >
+                    <MoreHorizontal size={15} />
+                  </button>
+                )}
+
+                {menuOpen && (
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    className="absolute right-1 top-9 z-50 w-36 bg-panel2 border border-border rounded-lg shadow-xl py-1 animate-rise"
+                  >
                     <button
                       onClick={(e) => startEditing(e, c)}
-                      aria-label="Rename conversation"
-                      className="flex-shrink-0 p-1 rounded opacity-0 group-hover:opacity-100 text-text-muted hover:text-text transition-colors"
+                      className="w-full flex items-center gap-2 text-left text-sm px-3 py-2 text-text-muted hover:text-text hover:bg-panel transition-colors"
                     >
                       <Pencil size={13} />
+                      Rename
                     </button>
                     <button
-                      onClick={(e) => handleDeleteClick(e, c.id, c.title)}
-                      aria-label="Delete conversation"
-                      className="flex-shrink-0 p-1 rounded opacity-0 group-hover:opacity-100 text-text-muted hover:text-red-400 transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setMenuOpenId(null);
+                        setPendingDelete(c);
+                      }}
+                      className="w-full flex items-center gap-2 text-left text-sm px-3 py-2 text-red-400 hover:bg-panel transition-colors"
                     >
                       <Trash2 size={13} />
+                      Delete
                     </button>
-                  </>
+                  </div>
                 )}
               </div>
             );
           })}
         </div>
 
-        <div className="p-3 border-t border-border flex items-center justify-between gap-2">
-          <span className="text-xs text-text-muted truncate">{userEmail}</span>
+        <div className="p-3 border-t border-border flex items-center gap-2">
+          <div className="w-7 h-7 rounded-full bg-glow/15 border border-glow/30 flex items-center justify-center text-glow text-xs font-semibold flex-shrink-0">
+            {initial}
+          </div>
+          <span className="text-xs text-text-muted truncate flex-1">{userEmail}</span>
           <button
-            onClick={handleSignOut}
+            onClick={() => setSignOutOpen(true)}
             aria-label="Sign out"
             className="text-text-muted hover:text-text flex-shrink-0"
           >
@@ -163,6 +197,26 @@ export default function Sidebar({
           </button>
         </div>
       </aside>
+
+      <ConfirmModal
+        open={!!pendingDelete}
+        title="Delete chat"
+        description={`Are you sure you want to delete "${pendingDelete?.title || "New chat"}"? This can't be undone.`}
+        confirmLabel="Delete"
+        danger
+        onConfirm={confirmDelete}
+        onCancel={() => setPendingDelete(null)}
+      />
+
+      <ConfirmModal
+        open={signOutOpen}
+        title="Sign out"
+        description="Are you sure you want to sign out of Pohana AI?"
+        confirmLabel="Sign out"
+        danger
+        onConfirm={handleSignOut}
+        onCancel={() => setSignOutOpen(false)}
+      />
     </>
   );
 }

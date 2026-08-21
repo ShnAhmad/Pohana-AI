@@ -133,7 +133,7 @@ export default function ChatApp({
   }
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-dvh">
       <Sidebar
         conversations={conversations}
         activeId={conversationId}
