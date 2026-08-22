@@ -1,0 +1,13 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Sign in",
+  description: "Sign in to Pohana AI — a fast, free, open-source AI chat assistant.",
+  alternates: {
+    canonical: "/login",
+  },
+};
+
+export default function LoginLayout({ children }: { children: React.ReactNode }) {
+  return children;
+}

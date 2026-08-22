@@ -268,10 +268,20 @@ pohana-ai/
 │   │           ├── route.ts                  # PATCH (rename) / DELETE a conversation
 │   │           └── messages/route.ts         # fetch messages for a conversation
 │   ├── auth/callback/route.ts                # exchanges magic-link code for a session
-│   ├── login/page.tsx                        # passwordless email sign-in
-│   ├── layout.tsx                            # fonts + global metadata
-│   ├── page.tsx                              # server component: auth check + loads conversations
-│   └── globals.css                           # theme, markdown/code styling
+│   ├── login/
+│   │   ├── layout.tsx                        # page-specific SEO title ("Sign in | Pohana AI")
+│   │   └── page.tsx                          # passwordless email sign-in
+│   ├── layout.tsx                            # fonts + full SEO metadata (OG/Twitter/JSON-LD) + global styles
+│   ├── page.tsx                               # server component: auth check + loads conversations
+│   ├── globals.css                           # theme, markdown/code styling
+│   ├── manifest.ts                           # PWA web app manifest (/manifest.webmanifest)
+│   ├── robots.ts                             # robots.txt — allows crawling, points to the sitemap
+│   ├── sitemap.ts                            # sitemap.xml
+│   ├── favicon.ico                           # auto-detected by Next.js (app/ special-file convention)
+│   ├── icon.png                              # 192×192 app icon (same convention)
+│   ├── apple-icon.png                        # iOS home-screen icon
+│   ├── opengraph-image.png                   # 1200×630 social share card (og:image)
+│   └── twitter-image.png                     # Twitter/X card image
 ├── components/
 │   ├── ChatApp.tsx          # client component: sidebar + streaming chat, wires it all together
 │   ├── Sidebar.tsx          # conversation list, new chat, rename, delete, sign out
@@ -281,13 +291,34 @@ pohana-ai/
 │   ├── SetupNeeded.tsx      # friendly screen shown if Supabase env vars are missing
 │   ├── ChatMessage.tsx      # message bubble + markdown renderer
 │   └── ChatInput.tsx        # auto-resizing input + send/stop button
-├── lib/supabase/
-│   ├── client.ts             # browser Supabase client
-│   └── server.ts              # server Supabase client (Server Components, API routes)
+├── lib/
+│   ├── site.ts                # SITE_URL / title / description / keywords — single source of
+│   │                           # truth for all SEO metadata, the sitemap, robots.txt & JSON-LD
+│   └── supabase/
+│       ├── client.ts          # browser Supabase client
+│       └── server.ts          # server Supabase client (Server Components, API routes)
+├── public/
+│   ├── icon-192.png          # PWA icon (referenced by manifest.ts)
+│   ├── icon-512.png          # PWA icon (referenced by manifest.ts)
+│   ├── icon-512-maskable.png # PWA maskable icon (safe-zone padded)
+│   └── og-image.png          # source copy of the share image
 ├── middleware.ts             # keeps the auth session fresh on every request
 ├── .env.example
 └── package.json
 ```
+
+### SEO & social sharing assets
+
+`favicon.ico`, `icon.png`, `apple-icon.png`, `opengraph-image.png`, and
+`twitter-image.png` sit directly in `app/` on purpose — that's Next.js's
+special-file convention, and it auto-generates the right `<link>`/`<meta>`
+tags with zero config. The remaining PWA icon sizes live in `public/` and
+are wired up in `app/manifest.ts`. All copy (title, description, keywords)
+is centralized in `lib/site.ts`.
+
+If you ever redesign the logo, just replace these files (same names/sizes)
+and everything — favicon, PWA icons, and the share image — updates
+automatically; no other file needs to change.
 
 ### The backend, explained (`app/api/chat/route.ts`)
 
