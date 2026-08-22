@@ -2,6 +2,7 @@ import { groq } from "@ai-sdk/groq";
 import { createOpenAI } from "@ai-sdk/openai";
 import { streamText, generateText, type LanguageModel } from "ai";
 import { createClient } from "@/lib/supabase/server";
+import { getWeather, webSearch } from "@/lib/tools";
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 30;
@@ -108,7 +109,17 @@ ACCURACY:
 TECHNICAL RESPONSES:
 - Show only the code necessary to solve the problem — no unrelated context.
 - Keep syntax and formatting correct and complete inside code blocks.
-- Explain technical concepts clearly, without unnecessary jargon.`;
+- Explain technical concepts clearly, without unnecessary jargon.
+
+TOOLS:
+- You have access to real-time weather lookup and live web search. Use
+  them whenever the answer depends on current conditions or information
+  that may have changed since your training — don't guess or rely on
+  outdated knowledge when a tool can get the real answer.
+- After using a tool, answer naturally using what it returned — don't
+  just dump raw data. When citing web search results, mention the source
+  by name in plain text (e.g. "according to Reuters"), not as a link dump.
+- If a tool returns an error, say so plainly rather than making something up.`;
 
 export async function POST(req: Request) {
   try {
@@ -151,6 +162,8 @@ export async function POST(req: Request) {
       system: SYSTEM_PROMPT,
       messages,
       temperature: 0.7,
+      tools: { getWeather, webSearch },
+      maxSteps: 5, // allows: call a tool → read its result → write the real answer
       async onFinish({ text }) {
         // Persist the assistant's full reply once streaming completes.
         if (conversationId) {
