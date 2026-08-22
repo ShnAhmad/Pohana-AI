@@ -1,9 +1,59 @@
 import { groq } from "@ai-sdk/groq";
-import { streamText } from "ai";
+import { createOpenAI } from "@ai-sdk/openai";
+import { streamText, generateText, type LanguageModel } from "ai";
 import { createClient } from "@/lib/supabase/server";
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 30;
+
+// Cerebras exposes an OpenAI-compatible API, so we reuse the official
+// OpenAI provider factory pointed at Cerebras's endpoint instead of
+// installing a separate provider package. Same model as Groq
+// ("gpt-oss-120b") is hosted on both, so the fallback behaves identically.
+const cerebras = createOpenAI({
+  apiKey: process.env.CEREBRAS_API_KEY,
+  baseURL: "https://api.cerebras.ai/v1",
+});
+
+const GROQ_MODEL_NAME = "openai/gpt-oss-120b";
+const CEREBRAS_MODEL_NAME = "gpt-oss-120b";
+
+// Remember which provider last worked, for a short window, so we don't
+// re-verify on every single message once we already know which one is up.
+// (Resets on cold start — that's fine, it just means one extra check.)
+let lastGoodProvider: "groq" | "cerebras" | null = null;
+let lastGoodAt = 0;
+const STICKY_WINDOW_MS = 60_000;
+
+async function isHealthy(model: LanguageModel) {
+  try {
+    await generateText({ model, messages: [{ role: "user", content: "hi" }], maxTokens: 1 });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function pickModel(): Promise<{ model: LanguageModel; provider: "groq" | "cerebras" }> {
+  const groqModel = groq(GROQ_MODEL_NAME);
+  const cerebrasModel = cerebras(CEREBRAS_MODEL_NAME);
+
+  const sticky = Date.now() - lastGoodAt < STICKY_WINDOW_MS;
+  if (sticky && lastGoodProvider) {
+    return { model: lastGoodProvider === "groq" ? groqModel : cerebrasModel, provider: lastGoodProvider };
+  }
+
+  if (await isHealthy(groqModel)) {
+    lastGoodProvider = "groq";
+    lastGoodAt = Date.now();
+    return { model: groqModel, provider: "groq" };
+  }
+
+  console.warn("Groq unavailable — falling back to Cerebras for this window.");
+  lastGoodProvider = "cerebras";
+  lastGoodAt = Date.now();
+  return { model: cerebrasModel, provider: "cerebras" };
+}
 
 const SYSTEM_PROMPT = `You are Pohana AI, a helpful, thoughtful, and honest AI assistant.
 
@@ -94,8 +144,10 @@ export async function POST(req: Request) {
       }
     }
 
+    const { model, provider } = await pickModel();
+
     const result = streamText({
-      model: groq("openai/gpt-oss-120b"),
+      model,
       system: SYSTEM_PROMPT,
       messages,
       temperature: 0.7,
@@ -112,12 +164,15 @@ export async function POST(req: Request) {
       },
     });
 
-    return result.toDataStreamResponse({
+    const response = result.toDataStreamResponse({
       getErrorMessage: (error) => {
         console.error("streamText error:", error);
         return error instanceof Error ? error.message : "Unknown streaming error";
       },
     });
+    // Handy for debugging in Vercel logs / browser devtools which provider served this reply.
+    response.headers.set("X-Model-Provider", provider);
+    return response;
   } catch (err) {
     console.error("Chat API error:", err);
     return new Response(
