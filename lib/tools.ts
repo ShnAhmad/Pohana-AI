@@ -40,7 +40,8 @@ export const getWeather = tool({
   execute: async ({ location }) => {
     try {
       const geoRes = await fetch(
-        `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(location)}&count=1`
+        `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(location)}&count=1`,
+        { signal: AbortSignal.timeout(8000) }
       );
       const geoJson = await geoRes.json();
       const place = geoJson?.results?.[0];
@@ -49,7 +50,8 @@ export const getWeather = tool({
       }
 
       const weatherRes = await fetch(
-        `https://api.open-meteo.com/v1/forecast?latitude=${place.latitude}&longitude=${place.longitude}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code&timezone=auto`
+        `https://api.open-meteo.com/v1/forecast?latitude=${place.latitude}&longitude=${place.longitude}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code&timezone=auto`,
+        { signal: AbortSignal.timeout(8000) }
       );
       const weatherJson = await weatherRes.json();
       const current = weatherJson?.current;
@@ -68,10 +70,24 @@ export const getWeather = tool({
       };
     } catch (err) {
       console.error("getWeather tool error:", err);
-      return { error: "Failed to fetch weather data." };
+      const timedOut = err instanceof Error && err.name === "TimeoutError";
+      return { error: timedOut ? "Weather service timed out." : "Failed to fetch weather data." };
     }
   },
 });
+
+// Search result content is often noisy — markdown tables, mixed scripts
+// from multilingual pages, excess whitespace. Feeding that straight back
+// to the model bloats the next request and has been observed to trigger
+// outright request failures from the provider. Clean it before returning.
+function cleanSnippet(text: string, maxLen = 280): string {
+  return text
+    .replace(/\|/g, " ") // strip markdown table pipes
+    .replace(/[^\x00-\x7F]+/g, " ") // strip non-ASCII (mixed scripts, emoji, etc.)
+    .replace(/\s+/g, " ") // collapse whitespace/newlines
+    .trim()
+    .slice(0, maxLen);
+}
 
 // Tavily is purpose-built for feeding LLMs — it returns pre-summarized,
 // structured results instead of raw HTML/links, which the model can work
@@ -93,9 +109,10 @@ export const webSearch = tool({
         body: JSON.stringify({
           api_key: process.env.TAVILY_API_KEY,
           query,
-          max_results: 5,
+          max_results: 4,
           search_depth: "basic",
         }),
+        signal: AbortSignal.timeout(10000),
       });
       const json = await res.json();
       if (!res.ok) {
@@ -103,14 +120,15 @@ export const webSearch = tool({
       }
       return {
         results: (json.results ?? []).map((r: { title: string; url: string; content?: string }) => ({
-          title: r.title,
+          title: cleanSnippet(r.title, 120),
           url: r.url,
-          snippet: r.content?.slice(0, 500),
+          snippet: r.content ? cleanSnippet(r.content) : "",
         })),
       };
     } catch (err) {
       console.error("webSearch tool error:", err);
-      return { error: "Failed to perform web search." };
+      const timedOut = err instanceof Error && err.name === "TimeoutError";
+      return { error: timedOut ? "Web search timed out." : "Failed to perform web search." };
     }
   },
 });

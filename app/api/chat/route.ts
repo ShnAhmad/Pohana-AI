@@ -116,6 +116,14 @@ TOOLS:
   them whenever the answer depends on current conditions or information
   that may have changed since your training — don't guess or rely on
   outdated knowledge when a tool can get the real answer.
+- Use a tool at most twice per response. As soon as you have a relevant
+  result, answer with it — do not keep re-searching to chase a more exact
+  or more "live" number. If a search shows an event has already concluded
+  (a final score, a completed match, a result), treat that as the answer;
+  do not search again looking for an in-progress state that no longer exists.
+- If results are incomplete, slightly stale, or mixed, answer with the best
+  available information and briefly note the uncertainty (e.g. "as of the
+  latest report I found...") rather than searching further.
 - After using a tool, answer naturally using what it returned — don't
   just dump raw data. When citing web search results, mention the source
   by name in plain text (e.g. "according to Reuters"), not as a link dump.
@@ -163,7 +171,7 @@ export async function POST(req: Request) {
       messages,
       temperature: 0.7,
       tools: { getWeather, webSearch },
-      maxSteps: 5, // allows: call a tool → read its result → write the real answer
+      maxSteps: 4, // tool call(s) + final answer, capped tighter to avoid runaway loops
       async onFinish({ text }) {
         // Persist the assistant's full reply once streaming completes.
         if (conversationId) {
@@ -179,8 +187,20 @@ export async function POST(req: Request) {
 
     const response = result.toDataStreamResponse({
       getErrorMessage: (error) => {
-        console.error("streamText error:", error);
-        return error instanceof Error ? error.message : "Unknown streaming error";
+        // Log everything we can, since some thrown values aren't real Error
+        // instances and lose their detail with a plain console.error alone.
+        console.error("streamText error (raw):", error);
+        try {
+          console.error(
+            "streamText error (full):",
+            JSON.stringify(error, Object.getOwnPropertyNames(error ?? {}))
+          );
+        } catch {
+          console.error("streamText error (stringified):", String(error));
+        }
+        return error instanceof Error
+          ? error.message
+          : "Something went wrong generating a response. Please try again.";
       },
     });
     // Handy for debugging in Vercel logs / browser devtools which provider served this reply.
