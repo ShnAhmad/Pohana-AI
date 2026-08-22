@@ -159,8 +159,14 @@ export default function ChatApp({
               <EmptyState onPick={(text) => handleSend(text)} />
             ) : (
               <div className="flex flex-col gap-6 py-6">
-                {messages.map((m) => (
-                  <ChatMessage key={m.id} role={m.role as "user" | "assistant"} content={m.content} />
+                {messages.map((m, idx) => (
+                  <ChatMessage
+                    key={m.id}
+                    role={m.role as "user" | "assistant"}
+                    content={m.content}
+                    toolInvocations={m.toolInvocations}
+                    streaming={isLoading && idx === messages.length - 1 && m.role === "assistant"}
+                  />
                 ))}
                 {isLoading && messages[messages.length - 1]?.role === "user" && (
                   <ChatMessage role="assistant" content="" streaming />
