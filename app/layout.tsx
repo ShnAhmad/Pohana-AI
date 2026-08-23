@@ -35,11 +35,11 @@ export const metadata: Metadata = {
   publisher: "Pohana AI",
   category: "technology",
   alternates: {
-    canonical: "/",
+    canonical: "/login",
   },
   openGraph: {
     type: "website",
-    url: "/",
+    url: "/login",
     siteName: SITE_NAME,
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
